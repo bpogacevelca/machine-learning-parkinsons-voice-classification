@@ -29,7 +29,7 @@ Dataset source:
 
 ### Class Distribution
 
-![Class Distribution](images/class_balance.png)
+![Class Distribution](class_balance.png)
 
 ---
 
