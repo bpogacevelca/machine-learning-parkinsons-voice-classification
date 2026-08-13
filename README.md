@@ -89,7 +89,7 @@ The mean cross-validation accuracies were:
 | KNN | 59.56% |
 | XGBoost | 65.62% |
 
-![Mean Cross-Validation Accuracy](images/model_comparison.png)
+![Mean Cross-Validation Accuracy](model_comparison.png)
 
 Random Forest achieved the highest mean cross-validation accuracy of the models re-evaluated using 5-fold cross-validation.
 
