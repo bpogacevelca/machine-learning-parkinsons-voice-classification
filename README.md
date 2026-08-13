@@ -105,7 +105,9 @@ Random Forest was selected as the final classifier because it demonstrated stron
 
 ### Random Forest Confusion Matrix
 
-![Random Forest Confusion Matrix](images/random_forest_confusion_matrix.png)
+![Random Forest Confusion Matrix](random_forest_confusion_matrix.png)
+
+![Random Forest ROC Curve](random_forest_roc_curve.png)
 
 ---
 
@@ -113,7 +115,7 @@ Random Forest was selected as the final classifier because it demonstrated stron
 
 The correlation heatmap below shows relationships between the extracted acoustic features.
 
-![Feature Correlation Heatmap](images/correlation_heatmap.png)
+![Feature Correlation Heatmap](correlation_heatmap.png)
 
 ---
 
