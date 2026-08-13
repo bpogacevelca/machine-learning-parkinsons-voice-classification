@@ -2,7 +2,7 @@
 
 This project explores whether acoustic features extracted from voice recordings can be used to distinguish between individuals with Parkinson's disease and healthy controls using machine learning.
 
-The project was completed as part of the ThinkNeuro Software Engineering Practicum.
+The project was completed as part of the ThinkNeuro Software Engineering Practicum by Belina Pogace-Velca, Isa de Sabrit, and Adithya Gopavaram.
 
 ---
 
@@ -75,14 +75,21 @@ Models were evaluated using metrics including:
 
 To obtain a more reliable estimate of model performance, selected models were also evaluated using **5-fold stratified cross-validation**.
 
-### Cross-Validation Results
+## Cross-Validation Results
+
+The mean cross-validation accuracies were:
 
 | Model | Mean CV Accuracy |
 |---|---:|
 | Logistic Regression | 62.94% |
 | Decision Tree | 64.19% |
 | SVM | 65.59% |
-| Random Forest | **73.97%** |
+| **Random Forest** | **73.97%** |
+| Naive Bayes | 60.44% |
+| KNN | 59.56% |
+| XGBoost | 65.62% |
+
+![Mean Cross-Validation Accuracy](images/model_comparison.png)
 
 Random Forest achieved the highest mean cross-validation accuracy of the models re-evaluated using 5-fold cross-validation.
 
