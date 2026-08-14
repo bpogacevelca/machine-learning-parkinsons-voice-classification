@@ -5,6 +5,7 @@ import pandas as pd
 import joblib
 import tempfile
 import os
+import subprocess
 from scipy.stats import entropy
 
 
@@ -27,7 +28,7 @@ st.markdown(
     """
     <style>
 
-    /* Overall page */
+    /* Main page background */
     .stApp {
         background-color: #DCE8FF;
     }
@@ -38,7 +39,7 @@ st.markdown(
         padding-bottom: 3rem;
     }
 
-    /* Streamlit top header */
+    /* Streamlit top bar */
     [data-testid="stHeader"] {
         background-color: #AFCBF7 !important;
     }
@@ -51,7 +52,7 @@ st.markdown(
         background-color: #AFCBF7 !important;
     }
 
-    /* Main title */
+    /* Titles */
     h1 {
         color: #111827 !important;
         text-align: center;
@@ -68,6 +69,7 @@ st.markdown(
         line-height: 1.6;
     }
 
+    /* Subtitle */
     .subtitle {
         text-align: center;
         color: #26364A;
@@ -98,18 +100,18 @@ st.markdown(
         margin-top: 5px;
     }
 
-    /* Space under performance cards */
     .performance-gap {
-        height: 22px;
+        height: 24px;
     }
 
-    /* File uploader */
+    /* File uploader outer box */
     [data-testid="stFileUploader"] {
         background-color: white !important;
         border-radius: 16px;
         padding: 15px;
     }
 
+    /* File uploader inner box */
     [data-testid="stFileUploader"] section {
         background-color: white !important;
         border: 1px solid #BBD0F2 !important;
@@ -124,7 +126,7 @@ st.markdown(
         color: #4B5563 !important;
     }
 
-    /* Brighter upload button */
+    /* Bright upload button */
     [data-testid="stFileUploader"] button {
         background-color: #4A90E2 !important;
         color: white !important;
@@ -152,18 +154,18 @@ st.markdown(
 
     /* Analyse button */
     .stButton > button {
-        background-color: #4A90E2;
+        background-color: #4A90E2 !important;
         color: white !important;
-        border-radius: 10px;
-        border: none;
-        padding: 0.65rem 1.3rem;
-        font-weight: 700;
+        border-radius: 10px !important;
+        border: none !important;
+        padding: 0.65rem 1.3rem !important;
+        font-weight: 700 !important;
     }
 
     .stButton > button:hover {
-        background-color: #2F7DD1;
+        background-color: #2F7DD1 !important;
         color: white !important;
-        border: none;
+        border: none !important;
     }
 
     </style>
@@ -187,7 +189,7 @@ FIGSHARE_URL = (
 
 
 # ===================================================
-# LOAD MODEL
+# LOAD RANDOM FOREST MODEL
 # ===================================================
 
 @st.cache_resource
@@ -199,12 +201,12 @@ try:
     model = load_model()
 
 except Exception as e:
-    st.error(f"Could not load Random Forest model: {e}")
+    st.error(f"Could not load the Random Forest model: {e}")
     st.stop()
 
 
 # ===================================================
-# LOAD TRAINING FEATURE ORDER
+# LOAD FEATURE ORDER FROM TRAINING DATA
 # ===================================================
 
 try:
@@ -217,8 +219,69 @@ try:
     ]
 
 except Exception as e:
-    st.error(f"Could not load training dataset: {e}")
+    st.error(f"Could not load the training dataset: {e}")
     st.stop()
+
+
+# ===================================================
+# AUDIO CONVERSION
+# ===================================================
+
+def convert_to_wav(input_path):
+    """
+    Convert M4A/MP3 audio to a temporary WAV file using FFmpeg.
+    """
+
+    output_file = tempfile.NamedTemporaryFile(
+        delete=False,
+        suffix=".wav"
+    )
+
+    output_path = output_file.name
+    output_file.close()
+
+    try:
+        subprocess.run(
+            [
+                "ffmpeg",
+                "-y",
+                "-loglevel",
+                "error",
+                "-i",
+                input_path,
+                output_path
+            ],
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE
+        )
+
+        return output_path
+
+    except FileNotFoundError:
+
+        st.error(
+            "FFmpeg could not be found on the server."
+        )
+
+        return None
+
+    except subprocess.CalledProcessError as e:
+
+        error_message = (
+            e.stderr.decode(errors="ignore")
+            if e.stderr
+            else "Unknown FFmpeg error"
+        )
+
+        st.error(
+            "The uploaded audio could not be converted to WAV."
+        )
+
+        with st.expander("Technical details"):
+            st.code(error_message)
+
+        return None
 
 
 # ===================================================
@@ -235,7 +298,10 @@ def extract_features(file_path):
 
         features = {}
 
+        # -------------------------------------------
         # Fundamental frequency
+        # -------------------------------------------
+
         pitches, magnitudes = librosa.piptrack(
             y=y,
             sr=sr
@@ -262,7 +328,10 @@ def extract_features(file_path):
         )
 
 
-        # Jitter features
+        # -------------------------------------------
+        # Jitter-related features
+        # -------------------------------------------
+
         zero_crossings = librosa.zero_crossings(
             y,
             pad=False
@@ -298,7 +367,10 @@ def extract_features(file_path):
         )
 
 
-        # Shimmer features
+        # -------------------------------------------
+        # Shimmer-related features
+        # -------------------------------------------
+
         amplitude = librosa.amplitude_to_db(
             np.abs(y),
             ref=np.max
@@ -313,14 +385,31 @@ def extract_features(file_path):
             else np.nan
         )
 
-        features["MDVP:Shimmer(dB)"] = shimmer_std
-        features["Shimmer:APQ3"] = shimmer_std / 3
-        features["Shimmer:APQ5"] = shimmer_std / 5
-        features["MDVP:APQ"] = shimmer_std / len(amplitude)
-        features["Shimmer:DDA"] = shimmer_std * 3
+        features["MDVP:Shimmer(dB)"] = (
+            shimmer_std
+        )
+
+        features["Shimmer:APQ3"] = (
+            shimmer_std / 3
+        )
+
+        features["Shimmer:APQ5"] = (
+            shimmer_std / 5
+        )
+
+        features["MDVP:APQ"] = (
+            shimmer_std / len(amplitude)
+        )
+
+        features["Shimmer:DDA"] = (
+            shimmer_std * 3
+        )
 
 
+        # -------------------------------------------
         # Harmonic / noise features
+        # -------------------------------------------
+
         harmonic, percussive = (
             librosa.effects.hpss(y)
         )
@@ -336,7 +425,10 @@ def extract_features(file_path):
         )
 
 
+        # -------------------------------------------
         # Nonlinear features
+        # -------------------------------------------
+
         features["RPDE"] = (
             entropy(pitches)
             if len(pitches) > 0
@@ -344,11 +436,16 @@ def extract_features(file_path):
         )
 
         features["DFA"] = (
-            librosa.feature.rms(y=y).mean()
+            librosa.feature.rms(
+                y=y
+            ).mean()
         )
 
 
-        # Spread / PPE features
+        # -------------------------------------------
+        # Spread / PPE
+        # -------------------------------------------
+
         features["spread1"] = (
             np.std(pitches)
             if len(pitches) > 0
@@ -362,7 +459,10 @@ def extract_features(file_path):
         )
 
         features["D2"] = (
-            np.percentile(pitches, 99)
+            np.percentile(
+                pitches,
+                99
+            )
             if len(pitches) > 0
             else np.nan
         )
@@ -379,6 +479,7 @@ def extract_features(file_path):
         )
 
         return features
+
 
     except Exception as e:
 
@@ -420,19 +521,17 @@ with st.container(border=True):
 
     st.write(
         """
-        This educational machine-learning prototype analyses
-        acoustic features from sustained vowel recordings and
-        uses a Random Forest classifier to compare them with
-        patterns learned from Parkinson's disease and
-        healthy-control voice samples.
+        This educational machine-learning prototype analyses acoustic
+        features from sustained vowel recordings and uses a Random Forest
+        classifier to compare them with patterns learned from Parkinson's
+        disease and healthy-control voice samples.
         """
     )
 
     st.write(
         """
-        The application demonstrates an end-to-end workflow
-        from audio feature extraction to machine-learning
-        classification.
+        The application demonstrates an end-to-end workflow from
+        audio feature extraction to machine-learning classification.
         """
     )
 
@@ -443,16 +542,14 @@ with st.container(border=True):
 
 st.warning(
     """
-    **Important: this is a student research prototype,
-    not a diagnostic test.**
+    **Important: this is a student research prototype, not a diagnostic test.**
 
-    The model was trained on a small research dataset under
-    specific recording conditions. Different phones,
-    microphones, rooms and audio formats may produce
-    inaccurate classifications.
+    The model was trained on a small research dataset under specific
+    recording conditions. Different phones, microphones, rooms and
+    audio formats may produce inaccurate classifications.
 
-    The output should not be interpreted as evidence that
-    someone does or does not have Parkinson's disease.
+    The output should not be interpreted as evidence that someone
+    does or does not have Parkinson's disease.
     """
 )
 
@@ -483,26 +580,32 @@ st.subheader(
 
 uploaded_file = st.file_uploader(
     "Upload audio",
-    type=["wav", "m4a", "mp3"],
+    type=[
+        "wav",
+        "m4a",
+        "mp3"
+    ],
     label_visibility="collapsed"
 )
 
 
 # ===================================================
-# ANALYSIS
+# AUDIO ANALYSIS
 # ===================================================
 
 if uploaded_file is not None:
 
+    # Allow the user to listen to the uploaded recording
     st.audio(uploaded_file)
 
-    file_extension = os.path.splitext(
+    original_extension = os.path.splitext(
         uploaded_file.name
-    )[1]
+    )[1].lower()
 
+    # Save uploaded file temporarily
     with tempfile.NamedTemporaryFile(
         delete=False,
-        suffix=file_extension
+        suffix=original_extension
     ) as temp_audio:
 
         temp_audio.write(
@@ -517,67 +620,117 @@ if uploaded_file is not None:
         type="primary"
     ):
 
-        with st.spinner(
-            "Extracting acoustic features and running the model..."
-        ):
+        wav_path = None
 
-            features = extract_features(
-                audio_path
-            )
+        try:
+
+            with st.spinner(
+                "Preparing audio and extracting acoustic features..."
+            ):
+
+                # WAV can be read directly.
+                # M4A and MP3 are converted first.
+                if original_extension == ".wav":
+
+                    analysis_path = audio_path
+
+                else:
+
+                    wav_path = convert_to_wav(
+                        audio_path
+                    )
+
+                    if wav_path is None:
+                        st.stop()
+
+                    analysis_path = wav_path
 
 
-        if features is not None:
-
-            missing_features = [
-                feature
-                for feature in feature_columns
-                if feature not in features
-            ]
-
-
-            if missing_features:
-
-                st.error(
-                    "The extracted features do not match "
-                    "the features used to train the model."
+                # Extract features
+                features = extract_features(
+                    analysis_path
                 )
 
 
-            else:
+            if features is not None:
 
-                feature_df = pd.DataFrame(
-                    [features]
-                )
+                # -----------------------------------
+                # Check features
+                # -----------------------------------
 
-                feature_df = feature_df[
-                    feature_columns
+                missing_features = [
+                    feature
+                    for feature in feature_columns
+                    if feature not in features
                 ]
 
-                feature_df = feature_df.replace(
-                    [np.inf, -np.inf],
-                    np.nan
-                )
 
-
-                if feature_df.isnull().any().any():
+                if missing_features:
 
                     st.error(
                         """
-                        Some acoustic features could not be extracted
-                        reliably from this recording.
-
-                        Please try another clear recording.
+                        The extracted features do not match
+                        the features used to train the model.
                         """
                     )
+
+                    with st.expander(
+                        "Show missing features"
+                    ):
+
+                        st.write(
+                            missing_features
+                        )
 
 
                 else:
 
-                    try:
+                    # -----------------------------------
+                    # Exact training feature order
+                    # -----------------------------------
+
+                    feature_df = pd.DataFrame(
+                        [features]
+                    )
+
+                    feature_df = feature_df[
+                        feature_columns
+                    ]
+
+                    feature_df = feature_df.replace(
+                        [np.inf, -np.inf],
+                        np.nan
+                    )
+
+
+                    # -----------------------------------
+                    # Check invalid values
+                    # -----------------------------------
+
+                    if feature_df.isnull().any().any():
+
+                        st.error(
+                            """
+                            Some acoustic features could not be
+                            extracted reliably from this recording.
+
+                            Please try another clear recording of a
+                            steady "aaaaah" sound for approximately
+                            3–5 seconds in a quiet environment.
+                            """
+                        )
+
+
+                    else:
+
+                        # -----------------------------------
+                        # RANDOM FOREST PREDICTION
+                        # -----------------------------------
 
                         prediction = model.predict(
                             feature_df
                         )[0]
+
 
                         st.markdown("---")
 
@@ -596,10 +749,10 @@ if uploaded_file is not None:
                                 """
                                 The model placed this recording into
                                 the Parkinson's-labelled category
-                                learned from the training data.
+                                learned from the research dataset.
 
-                                This does **not** mean that the speaker
-                                has Parkinson's disease.
+                                **This does not mean that the speaker
+                                has Parkinson's disease.**
                                 """
                             )
 
@@ -614,12 +767,16 @@ if uploaded_file is not None:
                                 """
                                 The model placed this recording into
                                 the healthy-control category learned
-                                from the training data.
+                                from the research dataset.
 
-                                This is not a medical assessment.
+                                **This is not a medical assessment.**
                                 """
                             )
 
+
+                        # -----------------------------------
+                        # SHOW FEATURES
+                        # -----------------------------------
 
                         with st.expander(
                             "🔍 View extracted acoustic features"
@@ -643,13 +800,41 @@ if uploaded_file is not None:
                             )
 
 
-                    except Exception as e:
+            else:
 
-                        st.error(
-                            f"Prediction failed: {e}"
-                        )
+                st.error(
+                    """
+                    The acoustic features could not be
+                    extracted from this recording.
+
+                    Please try another recording.
+                    """
+                )
 
 
+        except Exception as e:
+
+            st.error(
+                f"Prediction failed: {e}"
+            )
+
+
+        finally:
+
+            # Delete converted WAV file
+            if (
+                wav_path is not None
+                and os.path.exists(wav_path)
+            ):
+
+                try:
+                    os.remove(wav_path)
+
+                except Exception:
+                    pass
+
+
+    # Delete original temporary upload
     try:
         os.remove(audio_path)
 
@@ -711,7 +896,7 @@ st.markdown(
 
 
 # ===================================================
-# DATASET & SOURCE
+# DATASET SOURCE
 # ===================================================
 
 with st.expander(
@@ -720,14 +905,13 @@ with st.expander(
 
     st.write(
         """
-        The voice recordings used to create the training
-        dataset were obtained from a publicly available
-        research dataset hosted on **Figshare**.
+        The voice recordings used to create the training dataset
+        were obtained from a publicly available research dataset
+        hosted on **Figshare**.
 
-        The dataset contains voice samples from Parkinson's
-        disease and healthy-control participants that were
-        used for acoustic feature extraction and
-        machine-learning classification in this project.
+        The dataset contains Parkinson's disease and
+        healthy-control voice recordings used for acoustic
+        feature extraction and machine-learning classification.
         """
     )
 
@@ -751,7 +935,7 @@ with st.expander(
         - Cross-validation was performed within the available dataset.
         - The model has not been validated on an independent clinical cohort.
         - Smartphone microphones and recording environments may alter the extracted features.
-        - Preliminary informal smartphone testing showed limited generalisation to new recordings.
+        - Preliminary informal testing showed limited generalisation to new recordings.
         - The acoustic features used here should not be treated as validated clinical biomarkers.
         """
     )
@@ -767,19 +951,19 @@ with st.expander(
 
     st.write(
         """
-        Machine-learning models learn patterns from the
-        data used during training.
+        Machine-learning models learn patterns from the data
+        used during training.
 
-        If a new recording differs because of microphone
-        type, audio compression, room acoustics, recording
-        distance or speaker characteristics, the extracted
+        If a new recording differs because of microphone type,
+        audio compression, room acoustics, recording distance
+        or speaker characteristics, the extracted acoustic
         features may also differ.
 
-        This is a **generalisation problem**.
+        This is a generalisation problem.
 
-        A stronger future version would use a larger,
-        more diverse dataset, standardised recording
-        procedures and independent external validation.
+        A stronger future version would use a larger and more
+        diverse dataset, standardised recording procedures
+        and independent external validation.
         """
     )
 
