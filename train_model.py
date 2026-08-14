@@ -60,3 +60,19 @@ for name, model in models.items():
     print("Mean accuracy:", round(scores.mean() * 100, 2), "%")
     print("Standard deviation:", round(scores.std() * 100, 2), "%")
     print()
+    import os
+    import joblib
+    from sklearn.ensemble import RandomForestClassifier
+
+os.makedirs("models", exist_ok=True)
+
+final_model = RandomForestClassifier(
+    n_estimators=100,
+    random_state=42
+)
+
+final_model.fit(X, y)
+
+joblib.dump(final_model, "models/random_forest_model.joblib")
+
+print("Saved final Random Forest model.")
