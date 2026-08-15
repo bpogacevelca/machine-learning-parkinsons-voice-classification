@@ -119,21 +119,6 @@ The correlation heatmap below shows relationships between the extracted acoustic
 
 ---
 
-## Project Workflow
+## Demo
 
-```text
-Voice Recordings
-        ↓
-Acoustic Feature Extraction
-        ↓
-Dataset Creation
-        ↓
-Machine Learning Models
-        ↓
-Model Evaluation
-        ↓
-5-Fold Cross-Validation
-        ↓
-Random Forest Selected
-        ↓
-Interactive Prediction Demo
+https://parkinsons-voice-classification.streamlit.app/
