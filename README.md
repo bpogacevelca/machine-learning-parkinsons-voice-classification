@@ -113,7 +113,6 @@ Random Forest was selected as the final classifier because it demonstrated stron
 
 ## Feature Relationships
 
-## Limitations
 
 
 The correlation heatmap below shows relationships between the extracted acoustic features.
@@ -125,3 +124,7 @@ The correlation heatmap below shows relationships between the extracted acoustic
 ## Demo
 
 https://parkinsons-voice-classification.streamlit.app/
+
+---
+
+## limitations
