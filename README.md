@@ -126,5 +126,3 @@ The correlation heatmap below shows relationships between the extracted acoustic
 https://parkinsons-voice-classification.streamlit.app/
 
 ---
-
-## limitations
